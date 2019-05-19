@@ -7,24 +7,61 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(purrr)
+library(rvest)
+library(magrittr)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r message = FALSE, warning=FALSE}
+setwd("~/College/CMSC320/Final Project/data/regularSeason")
 
-```{r cars}
+files <- dir(pattern = "*.csv")
 
+regular_seasons <- files %>%
+  map(read_csv) %>%
+  reduce(rbind)
+
+regular_seasons
 ```
+```{r message = FALSE, warning=FALSE}
+all_nba_team_players_url <- "https://en.wikipedia.org/wiki/All-NBA_Team"
 
-## Including Plots
+all_nba_team_players_data <- all_nba_team_players_url %>%
+  read_html() %>%
+  html_node("#mw-content-text > div > table:nth-child(24)") %>%
+  html_table(fill=TRUE) %>%
+  set_colnames(c("season", "first_players", "first_players_team", "second_players", "second_players_team", "third_players", "third_players_team")) %>%
+  as_tibble()
 
-You can also embed plots, for example:
+all_nba_team_players_data <- all_nba_team_players_data %>%
+  slice(2:151)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+all_nba_team_first_data <- all_nba_team_players_data %>%
+  select(season, first_players, first_players_team) %>%
+  mutate(first_team = 1) %>%
+  mutate(second_team = 0) %>%
+  mutate(third_team = 0)
+  
+
+
+all_nba_team_second_data <- all_nba_team_players_data %>%
+  select(season, second_players, second_players_team) %>%
+  mutate(first_team = 0) %>%
+  mutate(second_team = 1) %>%
+  mutate(third_team = 0)
+
+all_nba_team_third_data <- all_nba_team_players_data %>%
+  select(season, third_players, third_players_team) %>%
+  mutate(first_team = 0) %>%
+  mutate(second_team = 0) %>%
+  mutate(third_team = 1)
+
+all_nba_team_players_data
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
