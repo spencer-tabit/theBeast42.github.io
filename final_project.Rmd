@@ -47,7 +47,10 @@ all_nba_team_first_data <- all_nba_team_players_data %>%
   select(season, first_players, first_players_team) %>%
   mutate(first_team = 1) %>%
   mutate(second_team = 0) %>%
-  mutate(third_team = 0)
+  mutate(third_team = 0) %>%
+  mutate(player = first_players) %>%
+  mutate(team = first_players_team) %>%
+  select(season, player, team, first_team, second_team, third_team)
   
 
 
@@ -55,13 +58,26 @@ all_nba_team_second_data <- all_nba_team_players_data %>%
   select(season, second_players, second_players_team) %>%
   mutate(first_team = 0) %>%
   mutate(second_team = 1) %>%
-  mutate(third_team = 0)
+  mutate(third_team = 0) %>%
+  mutate(player = second_players) %>%
+  mutate(team = second_players_team) %>%
+  select(season, player, team, first_team, second_team, third_team)
 
 all_nba_team_third_data <- all_nba_team_players_data %>%
   select(season, third_players, third_players_team) %>%
   mutate(first_team = 0) %>%
   mutate(second_team = 0) %>%
-  mutate(third_team = 1)
+  mutate(third_team = 1) %>%
+  mutate(player = third_players) %>%
+  mutate(team = third_players_team) %>%
+  select(season, player, team, first_team, second_team, third_team)
+
+all_nba_team_players_data <- all_nba_team_first_data %>%
+  full_join(all_nba_team_second_data, by= c("season", "player", "team", "first_team", "second_team", "third_team")) %>%
+  full_join(all_nba_team_third_data, by =c("season", "player", "team", "first_team", "second_team", "third_team")) %>%
+  arrange(season)
 
 all_nba_team_players_data
+
+#TODO: Clean up player names
 ```
