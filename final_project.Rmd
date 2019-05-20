@@ -15,6 +15,7 @@ library(ggplot2)
 library(purrr)
 library(rvest)
 library(magrittr)
+library(stringr)
 ```
 
 
@@ -77,7 +78,8 @@ all_nba_team_players_data <- all_nba_team_first_data %>%
   full_join(all_nba_team_third_data, by =c("season", "player", "team", "first_team", "second_team", "third_team")) %>%
   arrange(season)
 
-all_nba_team_players_data
+all_nba_team_players_data <- all_nba_team_players_data %>%
+  mutate(player = str_extract(player, "^(\\w|'|-)* [A-Za-z]*"))
 
-#TODO: Clean up player names
-```
+all_nba_team_players_data
+```  
