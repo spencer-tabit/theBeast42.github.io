@@ -11,32 +11,41 @@ The National Basketball Association is going through a lot of changes nowdays wi
 
 #Required Tools
 
+Below is an overview of some of the more heavily used libraries and what their use is.
 
-
-
+readr => Important for methods like read_csv() which let you read in data from csv files stored locally on your computer.
+dplyr => Contains all the basic methods for data manipulation like mutate(), select(), filter(), summarise(), and arrange(). This methods will be used repeatedly throughout the tutorial.
+ggplot2 => This package contains the essentails for graphically displaying data. This link, https://github.com/rstudio/cheatsheets/blob/master/data-visualization-2.1.pdf , goes to a nice cheat sheet that illustrates all the information a coder needs to make the perfect visuals. 
+rvest => Let's us scrape data from websites. The methods in this package will be useful when we have to copy a table from Wikipedia.
+magrittr => The package also lets your use %>% or pipe operator which is a functional programming feature. The pipe operator lets you push the data frame forward to the next function.
+stringr => This is used for manipulating string and doing regex while the data is getting cleaned.
+broom => The broom package let's us perform different types of linear regression and other stastical tests while returning a tidy data frame.
 
 ```{r setup, include=TRUE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(dplyr)
-library(tidyr)
-library(lubridate)
 library(ggplot2)
-library(purrr)
 library(rvest)
 library(magrittr)
 library(stringr)
 library(broom)
 library(knitr)
+library(ROCR)
+library(tidyr)
+library(tidyverse)
+library(tibble)
 ```
 
 #Tidying Up Data
+
+In this step, I am taking that CSV files that contain the professional basketball player statistics for a season, and loading them into dataframes. I then use the rbind method to merge everything into one gaint dataframe that contains all the data. I tidy up the frames by adding in the season, so I can analyze trends across seasons.
 
 ```{r message = FALSE, warning=FALSE}
 setwd("~/College/CMSC320/Final Project/data/regularSeason")
 
 regular_seasons <- 
-  rbind(
+  rbind( #rbind mergess two data frames that have the same columns together
     read_csv("nba_1988-89.csv") %>% mutate(season = "1988-89"),
     read_csv("nba_1989-90.csv") %>% mutate(season = "1989-90")
   ) %>%
@@ -124,19 +133,22 @@ regular_seasons <-
   rbind(
     read_csv("nba_2017-18.csv") %>% mutate(season = "2017-18")
   ) %>%
-  mutate(player = str_trim(Name)) %>%
-  select(-Name)
+  mutate(player = str_trim(Name)) #We need to remove trailing whitespace or the join will not work later on.
 
+regular_seasons$Name <- NULL #We don't need name anymore since we have replaced it with player.
 
 regular_seasons
 ```
 #Web Scrapping and Cleaning Data
+In this sections I scrape Wikipedia for the All-NBA teams from 1988 to 2018. This gives me a larger enough set of data to join with my regular season. This allows me to compare the two datasets and figure out which differences between regular NBA players and All-NBA players.
+
 ```{r message = FALSE, warning=FALSE}
 all_nba_team_players_url <- "https://en.wikipedia.org/wiki/All-NBA_Team"
 
 all_nba_team_players_data <- all_nba_team_players_url %>%
   read_html() %>%
-  html_node("#mw-content-text > div > table:nth-child(24)") %>%
+  html_node("#mw-content-text > div > table:nth-child(24)") %>% 
+  #Using inspect on your favorite web browser you can find the table and copy the selector when it gives you the option.
   html_table(fill=TRUE) %>%
   set_colnames(c("season", "first_players", "first_players_team", "second_players", "second_players_team", "third_players", "third_players_team")) %>%
   as_tibble()
@@ -145,30 +157,27 @@ all_nba_team_players_data <- all_nba_team_players_data %>%
   slice(2:151)
 
 all_nba_team_first_data <- all_nba_team_players_data %>%
-  select(season, first_players) %>%
   mutate(is_all_nba = "Yes") %>%
-  mutate(player = first_players) %>%
+  rename(player = first_players) %>%
   select(season, player, is_all_nba)
-  
-
 
 all_nba_team_second_data <- all_nba_team_players_data %>%
-  select(season, second_players) %>%
   mutate(is_all_nba = "Yes") %>%
   mutate(player = second_players) %>%
   select(season, player, is_all_nba)
 
 all_nba_team_third_data <- all_nba_team_players_data %>%
-  select(season, third_players) %>%
   mutate(is_all_nba = "Yes") %>%
   mutate(player = third_players) %>%
   select(season, player, is_all_nba)
 
+#We want a full join because we know none of the values are going to match. We just want the values to be merged into one table without anything being dropped.
 all_nba_team_players_data <- all_nba_team_first_data %>%
   full_join(all_nba_team_second_data, by= c("season", "player", "is_all_nba")) %>%
   full_join(all_nba_team_third_data, by =c("season", "player", "is_all_nba")) %>%
   arrange(season)
 
+#The season values and player names were not very character friendly, so I used some string manipulation to make them compatible with our local data.
 all_nba_team_players_data <- all_nba_team_players_data %>%
   mutate(player = str_extract(player, "^(\\w|'|-)* [A-Za-z]*")) %>%
   mutate(season = str_c(str_extract(season, "^\\d*"),str_extract(str_trim(season), "\\d*$"), sep = "-"))
@@ -176,8 +185,9 @@ all_nba_team_players_data <- all_nba_team_players_data %>%
 all_nba_team_players_data
 ```  
 #Putting the data together
+I put the data together in one place, so I could have all the data in one dataframe. This makes it easier to select the data I need into a new frame or I can easily compare any two attributes in a graph with this dataset.
 ```{r}
-  
+#I used a left join because I didn't want to include any data about All-NBA players without matching statistics. Without having the statistics associated with the player I wouldn't be any calculations making them not very useful.
 regular_seasons <- regular_seasons %>%
   left_join(all_nba_team_players_data, by = c("player", "season")) %>%
   mutate(is_all_nba = if_else(is.na(is_all_nba), "No", "Yes"))
@@ -260,8 +270,6 @@ print(table(predicted=lda_pred2$class, observed=regular_seasons$is_all_nba))
 ``` 
 
 ```{r echo=FALSE}
-library(ROCR)
-
 pred2 <- prediction(lda_pred2$posterior[,"Yes"], regular_seasons$is_all_nba)
 
 layout(cbind(1,2))
@@ -274,8 +282,4 @@ auc <- unlist(performance(pred2, "auc")@y.values)
 plot(performance(pred2, "tpr", "fpr"), 
      main=paste("LDA AUROC=", round(auc, 2)), 
      lwd=1.4, cex.lab=1.7, cex.main=1.5)
-```
-
-```{r}
-
 ```
