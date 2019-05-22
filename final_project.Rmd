@@ -16,6 +16,8 @@ library(purrr)
 library(rvest)
 library(magrittr)
 library(stringr)
+library(broom)
+library(knitr)
 ```
 
 
@@ -185,16 +187,74 @@ regular_seasons <- regular_seasons %>%
 regular_seasons <- mutate(regular_seasons, first_team = if_else(is.na(regular_seasons$first_team), 0, first_team)) %>%
   mutate(second_team = if_else(is.na(regular_seasons$second_team), 0, regular_seasons$second_team)) %>%
   mutate(third_team = if_else(is.na(regular_seasons$third_team), 0, regular_seasons$third_team)) %>%
-  mutate(is_all_nba = if_else(is.na(regular_seasons$all_nba_team), 0, 1)) %>%
+  mutate(is_all_nba = if_else(is.na(regular_seasons$all_nba_team), "No", "Yes")) %>%
   mutate(all_nba_team = if_else(is.na(regular_seasons$all_nba_team), "none", regular_seasons$all_nba_team))
 
 regular_seasons
 ``` 
 
-```{r }
+```{r}
+all_nba_fit <- glm(as.factor(is_all_nba) ~ EFF, data = regular_seasons, family = "binomial")
 
+all_nba_fit %>%
+  tidy()
+#%>%
+ # kable(digits = 4)
+``` 
+
+```{r}
+lda_stats <- regular_seasons %>%
+  group_by(is_all_nba) %>%
+  mutate(EFF_mean = mean(EFF), squared_error = (EFF - EFF_mean)) %>%
+  summarize(EFF_mean = first(EFF_mean), sample_size = n(), sum_squares = sum(squared_error)) %>%
+  mutate(EFF_prior = sample_size/sum(sample_size), sigma2=sum(sum_squares)/(sum(sample_size)-2)) %>%
+  select(is_all_nba, EFF_mean, EFF_prior, sigma2)
+
+lda_stats
+``` 
+
+```{r}
+lda_log_ratio <- function(EFF, lda_stats) {
+  n <- length(EFF)
+  
+  # subtract class mean
+  centered_EFF <- rep(EFF, 2) - rep(lda_stats$EFF_mean, each=n)
+  
+  # scale by standard deviation
+  scaled_EFF <- centered_EFF / sqrt(lda_stats$sigma2[1])
+  
+  # compute log normal density and add log class prior
+  lprobs <- dnorm(scaled_EFF, log=TRUE) + log(rep(lda_stats$EFF_prior, each=n))
+  
+  # compute log ratio of class probabilities
+  lprobs <- matrix(lprobs, nc=2)
+  colnames(lprobs) <- lda_stats$is_all_nba
+  lprobs[,"Yes"] - lprobs[,"No"]
+}
 ``` 
 
 
 
+```{r}
+test_EFF <- seq(0, 50, len = .1)
+plot(test_EFF, lda_log_ratio(test_EFF, lda_stats),
+     type = "l", xlab="EFF", ylab="Log Probability Ratio", cex =1.4)
+``` 
 
+```{r}
+library(MASS)
+all_nba_fit1 <- lda(as.factor(is_all_nba) ~ EFF, regular_seasons)
+lda_pred <- predict(all_nba_fit1, data=regular_seasons)
+print(table(predicted=lda_pred$class, observed=regular_seasons$is_all_nba))
+
+``` 
+
+```{r}
+all_nba_fit2 <- lda(as.factor(is_all_nba) ~ EFF * PTS * REB, regular_seasons)
+lda_pred2 <- predict(all_nba_fit2, data=regular_seasons)
+print(table(predicted=lda_pred2$class, observed=regular_seasons$is_all_nba))
+``` 
+
+```{r}
+
+``` 
