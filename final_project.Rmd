@@ -7,7 +7,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 
 #Introduction
 
-The National Basketball Association is going through a lot of changes nowdays with the rise of machine learning and big data. NBA teams are taking data and statistics and analyzing them in order to gain a competitive advantage just like many baseball teams started to do during the Moneyball era. While analyzing how these trends have affected the NBA and the All-NBA teams in particular, I will go through the data science pipeline, and explain how to do the same analysis.
+The National Basketball Association is going through a lot of changes nowdays with the rise of machine learning and big data. NBA teams are taking data and statistics and analyzing them in order to gain a competitive advantage just like many baseball teams started to do during the Moneyball era. While analyzing how these trends have affected the NBA and the All-NBA teams in particular, I will go through the data science pipeline, and explain how to do the same analysis. Some important trends to consider will be the rise of 3 pointers and how to predict All-NBA players, so teams know how to predict super max players. More on the supermax contract can be read about in this article: https://www.chicagotribune.com/sports/ct-spt-nba-supermax-contract-20181221-story.html
 
 #Required Tools
 
@@ -39,7 +39,7 @@ library(tibble)
 
 #Tidying Up Data
 
-In this step, I am taking that CSV files that contain the professional basketball player statistics for a season, and loading them into dataframes. I then use the rbind method to merge everything into one gaint dataframe that contains all the data. I tidy up the frames by adding in the season, so I can analyze trends across seasons.
+In this step, I am taking that CSV files that contain the professional basketball player statistics for a season, and loading them into dataframes. I then use the rbind method to merge everything into one gaint dataframe that contains all the data. I tidy up the frames by adding in the season, so I can analyze trends across seasons. The data orginally comes from https://github.com/aaronS7/nba-datasets. I only took data from my time frame and in the regular season. Some important basketball stat terms to know are PTS = Points, REB = Rebound, EFF = effiency (https://en.wikipedia.org/wiki/Efficiency_(basketball)) which involves a bunch of counting stats to create, and 3PA = 3 pointers attempted.
 
 ```{r message = FALSE, warning=FALSE}
 setwd("~/College/CMSC320/Final Project/data/regularSeason")
@@ -195,12 +195,13 @@ regular_seasons <- regular_seasons %>%
 regular_seasons
 ``` 
 #Exploratory Data Analysis, Graphing, and Linear Regression
+Now, that the data has been cleaned and consolidated, I have the ability to explore and find out the story the data is telling. First, I remembered from the many news articles I have read that the NBA was entering the 3 pt era. Players like Stephen Curry and teams like the Houston Rockets had been pushing the league as a whole to become disciples of the three ball. In order, to check if this claim was true, I started my exploration by graphing how many 3 pt shots had been attempted every season.
 ```{r}
 threes_per_season <- regular_seasons%>%
   group_by(season) %>%
   summarize(sum_of_3PA = sum(`3PA`)) %>%
   mutate(season = strtoi(str_extract(season, "^\\d*")))
-
+#I changed season to a numeric value because I wanted to be able to perform analysis on the linear regression later on.
 threes_per_season %>%
   ggplot(aes(x=season, y =sum_of_3PA)) +
   geom_bar(stat = "identity") +
@@ -210,7 +211,7 @@ threes_per_season %>%
          y = "Three Pointers Attempted") +
   theme(axis.text.x = element_text(angle=90, vjust=0.5))
 ```
-
+The graph clearly shows a positive relationship between year and three pointers attempted, so it makes sense to look at the linear regression more closely. Let's assume the null hypothesis holds and there is no relationship between year and three pointers attempted.
 ```{r}
 threes_per_season_fit <- lm(sum_of_3PA~season, data=threes_per_season)
 
@@ -219,11 +220,11 @@ threes_per_season_stats <- threes_per_season_fit %>%
 
 threes_per_season_stats
 ```
-
+I reject the null hypothesis of no relationship between year and three points attempted because the linear model between year and three points attempted shows that change of 16.9 is statistically significant. The change is statistically significant because7.852949e-11 is less than .05 by a lot.
 ```{r}
 threes_for_players <- regular_seasons%>%
   mutate(season = strtoi(str_extract(season, "^\\d*")))
-
+#The color add-on to the ggplot lets the graph know that it needs to label all the two categories of is_all_nba different colors, so they can be told apart in the scattterplot.
 threes_for_players %>%
   ggplot(aes(x=season, y = `3PA`, color = is_all_nba)) +
   geom_point() +
@@ -233,7 +234,7 @@ threes_for_players %>%
          y = "Three Pointers Attempted") +
   theme(axis.text.x = element_text(angle=90, vjust=0.5))
 ```
-
+Looking at this graph, the relationship isn't that different when we compare All-NBA players and regular players. Exploring more would give us more insight and allow us to figure out the best value to compare types of players on. This could eventually lead to a good value to categorize All-NBA players on.
 ```{r}
 average_players <- regular_seasons%>%
   group_by(is_all_nba) %>%
@@ -241,7 +242,7 @@ average_players <- regular_seasons%>%
 
 average_players
 ```
-
+Looking at the two types of players, we can see that EFF or efficeincy is an interesting option to look at further. There is a wide differnece between an All-NBA and normal players efficeincy. Also, it makes sense that All-NBA player has better averages because they are the better player across the board. It is also important to note that EFF takes into account PTS, REB, and other counting stats already, so we can use it instead of having to consider all those values at once.
 
 ```{r}
 regular_seasons%>%
@@ -253,9 +254,12 @@ regular_seasons%>%
          y = "Efficiency") +
   theme(axis.text.x = element_text(angle=90, vjust=0.5))
 ```
+This is an intriguing graph because it shows us that efficiency has been very good at seperating out All-NBA players. They all have extremely high effiency so we only have to look at the top of the line for each year to make guesses about what players will be All-NBA. This tells me that I should take a deeper look at classifying the data.
 
 #Classification
-```{r}
+Since we decided to use EFF as starting point to classify whether or not a player is on the All-NBA team, we should try to figure out well our model is doing. The two models below use EFF and some other other attributes to try to predict whether a player in our dataset is All-NBA. I thought the second model did a lear good job at limit false positives and true negatives.
+
+```{r message = FALSE, warning= FALSE}
 library(MASS)
 all_nba_fit1 <- lda(as.factor(is_all_nba) ~ EFF, regular_seasons)
 lda_pred <- predict(all_nba_fit1, data=regular_seasons)
@@ -276,10 +280,15 @@ layout(cbind(1,2))
 plot(performance(pred2, "tpr"))
 plot(performance(pred2, "fpr"))
 ``` 
-
+The TPR stays very close to 1 the entire time even as our cutoff goes to 1. This means we are generally getting true postives. On the other hand, the false positive rate almost immediately plummetts to zero signalling that there are almost no false positives being created to distract us.
 ```{r}
 auc <- unlist(performance(pred2, "auc")@y.values)
 plot(performance(pred2, "tpr", "fpr"), 
      main=paste("LDA AUROC=", round(auc, 2)), 
      lwd=1.4, cex.lab=1.7, cex.main=1.5)
 ```
+The ROC curve is a way of describing the TPR and FPR. It tells how much model is capable of deciding between our two choices. The higher the AUROC the better our model is at predicting between the binary decision. Obviously, 0.98 is an extremely high AUROC, so our choice of model is very good. To learn more about ROC and AUROC check out this link: https://towardsdatascience.com/understanding-auc-roc-curve-68b2303cc9c5
+
+#Conclusion
+
+In effect, it is possible to accurately determine if a player is goign to be a All-NBA player which is helpful to teams wondering what they might have to prepare to give out a supermax. Also, we saw that All-NBA players and normal players will both most likely increase the amounts of three pointers they take. Finally, I just scratched the surface of NBA data analysis. Many NBA teams have even more sophisticated data science questions like how accuracetely can we predict the success of rookies 5 years down the line. 
