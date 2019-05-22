@@ -7,8 +7,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = e
 
 #Introduction
 
-
-
+The National Basketball Association is going through a lot of changes nowdays with the rise of machine learning and big data. NBA teams are taking data and statistics and analyzing them in order to gain a competitive advantage just like many baseball teams started to do during the Moneyball era. While analyzing how these trends have affected the NBA and the All-NBA teams in particular, I will go through the data science pipeline, and explain how to do the same analysis.
 
 #Required Tools
 
@@ -211,6 +210,19 @@ threes_per_season_stats <- threes_per_season_fit %>%
 threes_per_season_stats
 ```
 
+```{r}
+threes_for_players <- regular_seasons%>%
+  mutate(season = strtoi(str_extract(season, "^\\d*")))
+
+threes_for_players %>%
+  ggplot(aes(x=season, y = `3PA`, color = is_all_nba)) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  labs(title="Three Pointers Attempted by Players in A Season",
+         x = "Season",
+         y = "Three Pointers Attempted") +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5))
+```
 
 ```{r}
 average_players <- regular_seasons%>%
