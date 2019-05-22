@@ -5,7 +5,18 @@ output: html_document
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 ---
 
-```{r setup, include=FALSE}
+#Introduction
+
+
+
+
+#Required Tools
+
+
+
+
+
+```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(dplyr)
@@ -20,7 +31,7 @@ library(broom)
 library(knitr)
 ```
 
-
+#Tidying Up Data
 
 ```{r message = FALSE, warning=FALSE}
 setwd("~/College/CMSC320/Final Project/data/regularSeason")
@@ -120,7 +131,7 @@ regular_seasons <-
 
 regular_seasons
 ```
-
+#Web Scrapping and Cleaning Data
 ```{r message = FALSE, warning=FALSE}
 all_nba_team_players_url <- "https://en.wikipedia.org/wiki/All-NBA_Team"
 
@@ -165,7 +176,7 @@ all_nba_team_players_data <- all_nba_team_players_data %>%
 
 all_nba_team_players_data
 ```  
-
+#Putting the data together
 ```{r}
   
 regular_seasons <- regular_seasons %>%
@@ -174,6 +185,7 @@ regular_seasons <- regular_seasons %>%
 
 regular_seasons
 ``` 
+#Exploratory Data Analysis, Graphing, and Linear Regression
 ```{r}
 threes_per_season <- regular_seasons%>%
   group_by(season) %>%
@@ -199,20 +211,6 @@ threes_per_season_stats <- threes_per_season_fit %>%
 threes_per_season_stats
 ```
 
-```{r}
-threes_by_players <- regular_seasons%>%
-  mutate(season = strtoi(str_extract(season, "^\\d*")))
-
-threes_by_players %>%
-  ggplot(aes(x=season, y =`3PA`, color = is_all_nba)) +
-  geom_point() +
-  geom_smooth(method = lm) +
-  labs(title="Three Pointers versus Seasons",
-         x = "Season",
-         y = "Three Pointers Attempted") +
-  theme(axis.text.x = element_text(angle=90, vjust=0.5))
-```
-
 
 ```{r}
 average_players <- regular_seasons%>%
@@ -234,7 +232,7 @@ regular_seasons%>%
   theme(axis.text.x = element_text(angle=90, vjust=0.5))
 ```
 
-
+#Classification
 ```{r}
 library(MASS)
 all_nba_fit1 <- lda(as.factor(is_all_nba) ~ EFF, regular_seasons)
