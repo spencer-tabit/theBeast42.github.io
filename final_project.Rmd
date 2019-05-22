@@ -117,8 +117,10 @@ regular_seasons <-
   mutate(player = str_trim(Name)) %>%
   select(-Name)
 
+
 regular_seasons
 ```
+
 ```{r message = FALSE, warning=FALSE}
 all_nba_team_players_url <- "https://en.wikipedia.org/wiki/All-NBA_Team"
 
@@ -133,40 +135,28 @@ all_nba_team_players_data <- all_nba_team_players_data %>%
   slice(2:151)
 
 all_nba_team_first_data <- all_nba_team_players_data %>%
-  select(season, first_players, first_players_team) %>%
-  mutate(first_team = 1) %>%
-  mutate(second_team = 0) %>%
-  mutate(third_team = 0) %>%
-  mutate(all_nba_team = "first") %>%
+  select(season, first_players) %>%
+  mutate(is_all_nba = "Yes") %>%
   mutate(player = first_players) %>%
-  mutate(team = first_players_team) %>%
-  select(season, player, team, first_team, second_team, third_team, all_nba_team)
+  select(season, player, is_all_nba)
   
 
 
 all_nba_team_second_data <- all_nba_team_players_data %>%
-  select(season, second_players, second_players_team) %>%
-  mutate(first_team = 0) %>%
-  mutate(second_team = 1) %>%
-  mutate(third_team = 0) %>%
-  mutate(all_nba_team = "second") %>%
+  select(season, second_players) %>%
+  mutate(is_all_nba = "Yes") %>%
   mutate(player = second_players) %>%
-  mutate(team = second_players_team) %>%
-  select(season, player, team, first_team, second_team, third_team, all_nba_team)
+  select(season, player, is_all_nba)
 
 all_nba_team_third_data <- all_nba_team_players_data %>%
-  select(season, third_players, third_players_team) %>%
-  mutate(first_team = 0) %>%
-  mutate(second_team = 0) %>%
-  mutate(third_team = 1) %>%
-  mutate(all_nba_team = "third") %>%
+  select(season, third_players) %>%
+  mutate(is_all_nba = "Yes") %>%
   mutate(player = third_players) %>%
-  mutate(team = third_players_team) %>%
-  select(season, player, team, first_team, second_team, third_team, all_nba_team)
+  select(season, player, is_all_nba)
 
 all_nba_team_players_data <- all_nba_team_first_data %>%
-  full_join(all_nba_team_second_data, by= c("season", "player", "team", "first_team", "second_team", "third_team", "all_nba_team")) %>%
-  full_join(all_nba_team_third_data, by =c("season", "player", "team", "first_team", "second_team", "third_team", "all_nba_team")) %>%
+  full_join(all_nba_team_second_data, by= c("season", "player", "is_all_nba")) %>%
+  full_join(all_nba_team_third_data, by =c("season", "player", "is_all_nba")) %>%
   arrange(season)
 
 all_nba_team_players_data <- all_nba_team_players_data %>%
@@ -177,68 +167,12 @@ all_nba_team_players_data
 ```  
 
 ```{r}
-# all_nba_with_stats <- all_nba_team_players_data %>%
-#   left_join(regular_seasons, by = c("player", "season")) %>%
-#   na.omit()
   
 regular_seasons <- regular_seasons %>%
-  left_join(all_nba_team_players_data, by = c("player", "season"))
- 
-regular_seasons <- mutate(regular_seasons, first_team = if_else(is.na(regular_seasons$first_team), 0, first_team)) %>%
-  mutate(second_team = if_else(is.na(regular_seasons$second_team), 0, regular_seasons$second_team)) %>%
-  mutate(third_team = if_else(is.na(regular_seasons$third_team), 0, regular_seasons$third_team)) %>%
-  mutate(is_all_nba = if_else(is.na(regular_seasons$all_nba_team), "No", "Yes")) %>%
-  mutate(all_nba_team = if_else(is.na(regular_seasons$all_nba_team), "none", regular_seasons$all_nba_team))
+  left_join(all_nba_team_players_data, by = c("player", "season")) %>%
+  mutate(is_all_nba = if_else(is.na(is_all_nba), "No", "Yes"))
 
 regular_seasons
-``` 
-
-```{r}
-all_nba_fit <- glm(as.factor(is_all_nba) ~ EFF, data = regular_seasons, family = "binomial")
-
-all_nba_fit %>%
-  tidy()
-#%>%
- # kable(digits = 4)
-``` 
-
-```{r}
-lda_stats <- regular_seasons %>%
-  group_by(is_all_nba) %>%
-  mutate(EFF_mean = mean(EFF), squared_error = (EFF - EFF_mean)) %>%
-  summarize(EFF_mean = first(EFF_mean), sample_size = n(), sum_squares = sum(squared_error)) %>%
-  mutate(EFF_prior = sample_size/sum(sample_size), sigma2=sum(sum_squares)/(sum(sample_size)-2)) %>%
-  select(is_all_nba, EFF_mean, EFF_prior, sigma2)
-
-lda_stats
-``` 
-
-```{r}
-lda_log_ratio <- function(EFF, lda_stats) {
-  n <- length(EFF)
-  
-  # subtract class mean
-  centered_EFF <- rep(EFF, 2) - rep(lda_stats$EFF_mean, each=n)
-  
-  # scale by standard deviation
-  scaled_EFF <- centered_EFF / sqrt(lda_stats$sigma2[1])
-  
-  # compute log normal density and add log class prior
-  lprobs <- dnorm(scaled_EFF, log=TRUE) + log(rep(lda_stats$EFF_prior, each=n))
-  
-  # compute log ratio of class probabilities
-  lprobs <- matrix(lprobs, nc=2)
-  colnames(lprobs) <- lda_stats$is_all_nba
-  lprobs[,"Yes"] - lprobs[,"No"]
-}
-``` 
-
-
-
-```{r}
-test_EFF <- seq(0, 50, len = .1)
-plot(test_EFF, lda_log_ratio(test_EFF, lda_stats),
-     type = "l", xlab="EFF", ylab="Log Probability Ratio", cex =1.4)
 ``` 
 
 ```{r}
@@ -255,6 +189,23 @@ lda_pred2 <- predict(all_nba_fit2, data=regular_seasons)
 print(table(predicted=lda_pred2$class, observed=regular_seasons$is_all_nba))
 ``` 
 
+```{r echo=FALSE}
+library(ROCR)
+
+pred2 <- prediction(lda_pred2$posterior[,"Yes"], regular_seasons$is_all_nba)
+
+layout(cbind(1,2))
+plot(performance(pred2, "tpr"))
+plot(performance(pred2, "fpr"))
+``` 
+
+```{r}
+auc <- unlist(performance(pred2, "auc")@y.values)
+plot(performance(pred2, "tpr", "fpr"), 
+     main=paste("LDA AUROC=", round(auc, 2)), 
+     lwd=1.4, cex.lab=1.7, cex.main=1.5)
+```
+
 ```{r}
 
-``` 
+```
