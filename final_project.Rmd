@@ -23,11 +23,97 @@ library(stringr)
 ```{r message = FALSE, warning=FALSE}
 setwd("~/College/CMSC320/Final Project/data/regularSeason")
 
-files <- dir(pattern = "*.csv")
-
-regular_seasons <- files %>%
-  map(read_csv) %>%
-  reduce(rbind)
+regular_seasons <- 
+  rbind(
+    read_csv("nba_1988-89.csv") %>% mutate(season = "1988-89"),
+    read_csv("nba_1989-90.csv") %>% mutate(season = "1989-90")
+  ) %>%
+  rbind(
+    read_csv("nba_1990-91.csv") %>% mutate(season = "1990-91")
+  ) %>%
+  rbind(
+    read_csv("nba_1991-92.csv") %>% mutate(season = "1991-92")
+  ) %>%
+  rbind (
+    read_csv("nba_1992-93.csv") %>% mutate(season = "1992-93")
+  ) %>%
+  rbind(
+    read_csv("nba_1993-94.csv") %>% mutate(season = "1993-94")
+  ) %>%
+  rbind(
+    read_csv("nba_1994-95.csv") %>% mutate(season = "1994-95")
+  ) %>%
+  rbind(
+    read_csv("nba_1995-96.csv") %>% mutate(season = "1995-96")
+  ) %>%
+  rbind(
+    read_csv("nba_1996-97.csv") %>% mutate(season = "1996-97")
+  ) %>%
+  rbind(
+    read_csv("nba_1997-98.csv") %>% mutate(season = "1997-98")
+  ) %>%
+  rbind(
+    read_csv("nba_1998-99.csv") %>% mutate(season = "1998-99")
+  ) %>%
+  rbind(
+    read_csv("nba_1999-00.csv") %>% mutate(season = "1999-00")
+  ) %>% 
+  rbind(
+    read_csv("nba_2000-01.csv") %>% mutate(season = "2000-01")
+  ) %>% 
+  rbind(
+    read_csv("nba_2001-02.csv") %>% mutate(season = "2001-02")
+  ) %>% 
+  rbind(
+    read_csv("nba_2002-03.csv") %>% mutate(season = "2002-03")
+  ) %>% 
+  rbind(
+    read_csv("nba_2003-04.csv") %>% mutate(season = "2003-04")
+  ) %>% 
+  rbind(
+    read_csv("nba_2004-05.csv") %>% mutate(season = "2004-05")
+  ) %>% 
+  rbind(
+    read_csv("nba_2005-06.csv") %>% mutate(season = "2005-06")
+  ) %>% 
+  rbind(
+    read_csv("nba_2006-07.csv") %>% mutate(season = "2006-07")
+  ) %>% 
+  rbind(
+    read_csv("nba_2007-08.csv") %>% mutate(season = "2007-08")
+  ) %>% 
+  rbind(
+    read_csv("nba_2008-09.csv") %>% mutate(season = "2008-09")
+  ) %>% 
+  rbind(
+    read_csv("nba_2009-10.csv") %>% mutate(season = "2009-10")
+  ) %>% 
+  rbind(
+    read_csv("nba_2010-11.csv") %>% mutate(season = "2010-11")
+  ) %>% 
+  rbind(
+    read_csv("nba_2011-12.csv") %>% mutate(season = "2011-12")
+  ) %>% 
+  rbind(
+    read_csv("nba_2012-13.csv") %>% mutate(season = "2012-13")
+  ) %>% 
+  rbind(
+    read_csv("nba_2013-14.csv") %>% mutate(season = "2013-14")
+  ) %>% 
+  rbind(
+    read_csv("nba_2014-15.csv") %>% mutate(season = "2014-15")
+  ) %>% 
+  rbind(
+    read_csv("nba_2015-16.csv") %>% mutate(season = "2015-16")
+  ) %>% 
+  rbind(
+    read_csv("nba_2016-17.csv") %>% mutate(season = "2016-17")
+  ) %>% 
+  rbind(
+    read_csv("nba_2017-18.csv") %>% mutate(season = "2017-18")
+  ) %>%
+  mutate(player = str_trim(Name)) %>%
+  select(-Name)
 
 regular_seasons
 ```
@@ -79,13 +165,24 @@ all_nba_team_players_data <- all_nba_team_first_data %>%
   arrange(season)
 
 all_nba_team_players_data <- all_nba_team_players_data %>%
-  mutate(player = str_extract(player, "^(\\w|'|-)* [A-Za-z]*"))
+  mutate(player = str_extract(player, "^(\\w|'|-)* [A-Za-z]*")) %>%
+  mutate(season = str_c(str_extract(season, "^\\d*"),str_extract(str_trim(season), "\\d*$"), sep = "-"))
 
 all_nba_team_players_data
 ```  
 
-```  {r}
+```{r}
+all_nba_with_stats <- all_nba_team_players_data %>%
+  left_join(regular_seasons, by = c("player", "season")) %>%
+  na.omit()
+  
+all_nba_with_stats
+``` 
 
-```  
+```{r}
+
+``` 
+
+
 
 
